@@ -22,49 +22,48 @@ class SMSShooter {
 
 //    public function send(){}
 //    public function send($number, $message, $priority = null){}
-    public function send($number = null, $message = null, $priority = null){
-        /*
-         *
-         * salva no banco de dados a msg, o numero, e prioridade
-         * se der problema no banco de dados cria um arquivo local com as mensagens
-         * adiciona na fila de envio
-         * 
-         */
+    public function startsWith($haystack, $needle){
+        return $needle === "" || strpos($haystack, $needle) === 0;
     }
+    public function removeStarts($number){
+        if($this->startsWith($number, "0")){
+            return substr($number,1);
+        }
+        return $number;
+    }
+    public function validNumber($number){
+        $number = $this->removeStarts($number);
+        if(strlen($number) == 10){
+            $number = substr($number, 1, 2) . "9" . substr($number,-8);
+        }
+        if(strlen($number) == 11){
+            $number = "+55". $number;
+        }
+        return $number;
+    }
+    public function validMessage($message){
+        $message = str_replace('"', '', $message);
+        $message = str_replace("'", "", $message);
+        $message = str_replace(";" , "" , $message);
+        return $message;
+    }
+    public function send($number = null, $message = null, $priority = null){
 
-    public function saveToDatabase(){}
+        $number = $this->validNumber($number);
+        $message = $this->validMessage($message);
+        if($priority == null){$priority = "5";}
+        $filename = rand(100,999) . "." . date("Y-m-d.H:i:s") . "." . $priority;
+        $dongle = 'dongle0';
 
-    public function updateDatabase(){}
+        $file = <<<HEREDOC
+Channel: LOCAL/smssend@smssend
+Application: DongleSendSMS
+Data: $dongle,$number,$message
+HEREDOC;
 
-    public function saveToPool(){}
-
-    public function checkPool(){}
-
-    public function removeFromPool(){}
-
-    public function checkModem(){}
-
-    public function verifyDongleSent(){}
-
-    public function saveToFile(){}
-
-    public function checkFile(){}
-
-    public function cleanFile(){}
-
-    public function sendingRoutine(){
-        /*
-         * Roda a cada 5 min
-         * 
-         * verifica qual modem está disponivel
-         * verifica se tem um arquivo com mensagens para serem enviadas caso tenha envia por order de prioridade
-         * verifica se tem mensagens na fila de envio caso tenha envia por ordem de prioridade
-         * verifica quais mensagens foram enviadas
-         * caso alguma mensagem não tenha sido enviada ela é adicionada novamente na fila
-         * limpa o arquivo e a fila de envio, mantendo as que devem ser enviadas novamente
-         * atualiza o banco de dados com as que foram enviadas
-         *
-         */
+        $fh = fopen("/var/tmp/". $filename . ".call" , 'w');
+        fwrite($fh, $file);
+        fclose($fh);
     }
 
 }
